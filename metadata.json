@@ -1,0 +1,5 @@
+{
+  "name": "陕西经济数据展示平台",
+  "description": "一个展示陕西省近十年GDP数据、城市占比及产业分布的交互式Web应用，具备地区分析与战略优势介绍功能。",
+  "requestFramePermissions": []
+}
