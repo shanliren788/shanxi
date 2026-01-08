@@ -493,10 +493,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* 文化详情弹窗 */}
+        {/* 文化详情弹窗 - 修复后的居中逻辑 */}
         <AnimatePresence>
           {selectedCulture && (
             <>
+              {/* 背景遮罩 */}
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -504,32 +505,36 @@ const App: React.FC = () => {
                 onClick={() => setSelectedCulture(null)}
                 className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[110] cursor-pointer"
               />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-white p-10 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] z-[111] border border-slate-100"
-              >
-                <button 
-                  onClick={() => setSelectedCulture(null)}
-                  className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
+              
+              {/* 弹窗包装容器，确保在各种分辨率下完美居中 */}
+              <div className="fixed inset-0 z-[111] flex items-center justify-center p-4 md:p-8 pointer-events-none">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                  className="pointer-events-auto relative w-full max-w-md bg-white p-10 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-slate-100 max-h-[90vh] overflow-y-auto"
                 >
-                  ✕
-                </button>
-                <div className="text-7xl mb-8 text-center">{selectedCulture.icon}</div>
-                <h4 className="text-2xl font-black text-slate-900 mb-6 text-center">{selectedCulture.title}</h4>
-                <p className="text-slate-600 leading-relaxed font-medium text-center italic">
-                  “{selectedCulture.detail}”
-                </p>
-                <div className="mt-10 flex justify-center">
                   <button 
                     onClick={() => setSelectedCulture(null)}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                    className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
                   >
-                    了解完毕
+                    ✕
                   </button>
-                </div>
-              </motion.div>
+                  <div className="text-7xl mb-8 text-center">{selectedCulture.icon}</div>
+                  <h4 className="text-2xl font-black text-slate-900 mb-6 text-center">{selectedCulture.title}</h4>
+                  <p className="text-slate-600 leading-relaxed font-medium text-center italic">
+                    “{selectedCulture.detail}”
+                  </p>
+                  <div className="mt-10 flex justify-center">
+                    <button 
+                      onClick={() => setSelectedCulture(null)}
+                      className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                    >
+                      了解完毕
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
             </>
           )}
         </AnimatePresence>
