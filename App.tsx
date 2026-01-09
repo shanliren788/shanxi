@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Sector
@@ -85,15 +85,63 @@ const renderActiveShape = (props: any) => {
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState('数据资产同步中...');
   const [selectedCity, setSelectedCity] = useState<CityData>(SHANXI_CITIES[0]);
   const [activeTab, setActiveTab] = useState<'trend' | 'structure'>('trend');
   const [pieAnimationKey, setPieAnimationKey] = useState(0);
-  const [activePieIndex, setActivePieIndex] = useState(-1);
+  const [activePieIndex, setActivePieIndex] = useState(0);
   const [selectedCulture, setSelectedCulture] = useState<{icon: string, title: string, detail: string} | null>(null);
   
   const [activeIndex, setActiveIndex] = useState(0);
   const isScrolling = useRef(false);
   const sectionsCount = 6;
+
+  // 动画“后台预热”逻辑：
+  // 在加载条达到100%后，自动切换 activeTab 多次，让浏览器计算 Recharts 和 Layout 的几何属性
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          return 100;
+        }
+        return prev + Math.floor(Math.random() * 15) + 5;
+      });
+    }, 80);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (loadingProgress === 100) {
+      const runWarmup = async () => {
+        setLoadingStatus('优化渲染引擎布局...');
+        
+        // 第一次循环：切换至结构分布并返回
+        await new Promise(r => setTimeout(r, 400));
+        setActiveTab('structure');
+        setLoadingStatus('预加载空间版图缓存 (1/2)...');
+        
+        await new Promise(r => setTimeout(r, 600));
+        setActiveTab('trend');
+        setLoadingStatus('校准趋势曲线模型...');
+        
+        // 第二次循环：重复执行以确保稳定渲染
+        await new Promise(r => setTimeout(r, 400));
+        setActiveTab('structure');
+        setLoadingStatus('预加载空间版图缓存 (2/2)...');
+        
+        await new Promise(r => setTimeout(r, 600));
+        setActiveTab('trend');
+        setLoadingStatus('全场景优化完成');
+        
+        await new Promise(r => setTimeout(r, 500));
+        setIsLoading(false);
+      };
+      
+      runWarmup();
+    }
+  }, [loadingProgress]);
 
   const navLinks = [
     { name: '首页', id: 'home', index: 0 },
@@ -103,20 +151,6 @@ const App: React.FC = () => {
     { name: '愿景展望', id: 'vision', index: 4 },
     { name: '关于', id: 'footer', index: 5 },
   ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          setTimeout(() => setIsLoading(false), 500);
-          return 100;
-        }
-        return prev + Math.floor(Math.random() * 15) + 5;
-      });
-    }, 100);
-    return () => clearInterval(timer);
-  }, []);
 
   const scrollToIndex = useCallback((index: number) => {
     if (isScrolling.current) return;
@@ -211,9 +245,10 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-black text-white tracking-[0.3em] mb-6">三秦数据资产同步中</h2>
-            <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" />
+            <h2 className="text-2xl font-black text-white tracking-[0.3em] mb-2 uppercase">三秦数字资产平台</h2>
+            <p className="text-blue-400 text-[10px] font-bold tracking-[0.5em] mb-10 opacity-70">{loadingStatus}</p>
+            <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden relative">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} className="h-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)]" />
             </div>
           </motion.div>
         )}
@@ -258,7 +293,8 @@ const App: React.FC = () => {
       </motion.nav>
 
       {/* 容器滚动区域 */}
-      <div className="h-full w-full">
+      {/* 即使在加载时也渲染主内容，但通过 opacity 控制，以支持后台预热 */}
+      <div className={`h-full w-full transition-opacity duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
         
         {/* 首页 (0) */}
         <section id="home" className="h-screen w-full flex flex-col items-center justify-center relative bg-slate-900">
@@ -282,7 +318,8 @@ const App: React.FC = () => {
         {/* 数据看板 (1) */}
         <section id="data" className="h-screen w-full flex flex-col justify-center bg-[#f8fafc]">
           <AnimatePresence mode="wait">
-            {activeIndex === 1 && (
+            {/* 后台预热期间 activeIndex 始终渲染 */}
+            {(activeIndex === 1 || isLoading) && (
               <motion.div key="data-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-7xl mx-auto px-8 w-full">
                 <motion.div variants={itemVariants} className="mb-10 text-center">
                   <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">GDP 核心指标看板</h2>
@@ -292,130 +329,139 @@ const App: React.FC = () => {
                   </div>
                 </motion.div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                  <AnimatePresence mode="popLayout">
-                    {activeTab === 'trend' && (
-                      <motion.div key="city-list" initial={{ opacity: 0, x: -40, width: 0 }} animate={{ opacity: 1, x: 0, width: 'auto' }} exit={{ opacity: 0, x: -40, width: 0 }} className="lg:col-span-1 space-y-2 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
-                        {SHANXI_CITIES.map((city) => (
-                          <button key={city.name} onClick={(e) => {e.stopPropagation(); setSelectedCity(city)}} className={`w-full text-left p-4 rounded-xl transition-all border-2 ${selectedCity.name === city.name ? 'border-blue-500 bg-blue-500 text-white shadow-lg' : 'border-transparent bg-white hover:bg-slate-50'}`}>
-                            <span className="font-bold text-sm">{city.name}</span>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <motion.div 
-                    layout 
-                    transition={{ type: "spring", stiffness: 200, damping: 25, mass: 0.8 }} 
-                    className={`bg-white rounded-[2rem] p-10 shadow-xl min-h-[480px] flex flex-col relative overflow-hidden ${activeTab === 'trend' ? 'lg:col-span-3' : 'lg:col-span-4'}`}
-                  >
-                    <AnimatePresence mode="wait">
-                      {activeTab === 'trend' ? (
+                <LayoutGroup>
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start relative min-h-[540px]">
+                    <AnimatePresence mode="popLayout">
+                      {activeTab === 'trend' && (
                         <motion.div 
-                          key={selectedCity.name} 
-                          initial={{ opacity: 0, x: 15, filter: 'blur(4px)' }} 
-                          animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} 
-                          exit={{ opacity: 0, x: -15, filter: 'blur(4px)' }} 
-                          transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
-                          className="h-full w-full flex flex-col"
+                          key="city-list" 
+                          layout
+                          initial={{ opacity: 0, x: -20 }} 
+                          animate={{ opacity: 1, x: 0 }} 
+                          exit={{ opacity: 0, x: -20 }} 
+                          className="lg:col-span-1 space-y-2 max-h-[540px] overflow-y-auto pr-2 custom-scrollbar bg-[#f8fafc] z-10"
                         >
-                          <h4 className="font-black text-xl mb-8 text-slate-800">{selectedCity.name} 历年生产总值 (亿元)</h4>
-                          <div className="flex-grow">
-                            <ResponsiveContainer width="100%" height={320}>
-                              <AreaChart data={selectedCity.history}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="gdp" stroke="#3b82f6" fill="url(#colorGdp)" strokeWidth={3} animationDuration={1000} />
-                                <defs><linearGradient id="colorGdp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <motion.div 
-                          key={`pie-dist-optimized-${pieAnimationKey}`} 
-                          initial={{ opacity: 0, y: 20, scale: 0.98, filter: 'blur(8px)' }} 
-                          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }} 
-                          exit={{ opacity: 0, y: -20, scale: 0.98, filter: 'blur(8px)' }}
-                          transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-                          className="h-full w-full flex flex-col relative"
-                        >
-                          <div className="flex-grow flex flex-col">
-                            <h4 className="font-black text-xl mb-4 text-center text-slate-800">全省经济空间版图</h4>
-                            <div className="relative flex-grow flex items-center justify-center">
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                <div className="relative flex flex-col items-center justify-center w-40 h-40">
-                                  <AnimatePresence mode="popLayout">
-                                    {activePieIndex !== -1 ? (
-                                      <motion.div 
-                                        key={`val-${activePieIndex}`} 
-                                        className="flex flex-col items-center" 
-                                        initial={{ opacity: 0, scale: 0.8, y: 8 }} 
-                                        animate={{ opacity: 1, scale: 1, y: 0 }} 
-                                        exit={{ opacity: 0, scale: 0.8, y: -8 }} 
-                                        transition={{ duration: 0.25, ease: "easeOut" }}
-                                      >
-                                        <span className="text-4xl font-black text-blue-600 drop-shadow-md leading-tight">{cityDistributionData[activePieIndex]?.value.toFixed(0)}</span>
-                                        <span className="text-[12px] text-slate-400 font-bold tracking-[0.3em] uppercase mt-1">亿元</span>
-                                      </motion.div>
-                                    ) : (
-                                      <motion.div 
-                                        key="placeholder" 
-                                        initial={{ opacity: 0 }} 
-                                        animate={{ opacity: 1 }} 
-                                        className="flex items-center justify-center"
-                                      >
-                                        <span className="text-[12px] text-blue-500/60 font-black tracking-[0.4em] uppercase animate-pulse">点击选择城市</span>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
-                              </div>
-                              <ResponsiveContainer width="100%" height={380}>
-                                <PieChart>
-                                  <Pie 
-                                    activeIndex={activePieIndex} 
-                                    activeShape={renderActiveShape} 
-                                    data={cityDistributionData} 
-                                    innerRadius={80} 
-                                    outerRadius={125} 
-                                    dataKey="value" 
-                                    paddingAngle={5} 
-                                    cx="50%" 
-                                    cy="50%" 
-                                    onClick={onPieClick} 
-                                    stroke="none" 
-                                    style={{ outline: 'none' }}
-                                    animationDuration={1200}
-                                    animationBegin={200}
-                                    animationEasing="cubic-bezier(0.33, 1, 0.68, 1)"
-                                  >
-                                    {cityDistributionData.map((_, index) => (
-                                      <Cell 
-                                        key={index} 
-                                        fill={COLORS[index % COLORS.length]} 
-                                        style={{ 
-                                          cursor: 'pointer', 
-                                          outline: 'none', 
-                                          filter: activePieIndex === index ? 'drop-shadow(0px 15px 25px rgba(0,0,0,0.15))' : 'none', 
-                                          transition: 'filter 0.5s ease, opacity 0.3s ease' 
-                                        }} 
-                                      />
-                                    ))}
-                                  </Pie>
-                                </PieChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div className="text-center mt-4 opacity-30 text-[10px] font-black tracking-[0.4em] uppercase">鼠标点击扇区查看详情</div>
-                          </div>
+                          {SHANXI_CITIES.map((city) => (
+                            <button key={city.name} onClick={(e) => {e.stopPropagation(); setSelectedCity(city)}} className={`w-full text-left p-4 rounded-xl transition-all border-2 ${selectedCity.name === city.name ? 'border-blue-500 bg-blue-500 text-white shadow-lg' : 'border-transparent bg-white hover:bg-slate-50'}`}>
+                              <span className="font-bold text-sm">{city.name}</span>
+                            </button>
+                          ))}
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </motion.div>
-                </div>
+
+                    <motion.div 
+                      layout 
+                      transition={{ type: "tween", ease: [0.4, 0, 0.2, 1], duration: 0.7 }} 
+                      className={`bg-white rounded-[2rem] p-10 shadow-xl h-[540px] flex flex-col relative overflow-hidden transition-[grid-column] duration-700 ${activeTab === 'trend' ? 'lg:col-span-3' : 'lg:col-span-4'}`}
+                    >
+                      <div className="flex-1 relative w-full h-full">
+                        <AnimatePresence mode="popLayout" initial={false}>
+                          {activeTab === 'trend' ? (
+                            <motion.div 
+                              key="trend-content-fixed" 
+                              initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }} 
+                              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} 
+                              exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }} 
+                              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                              className="absolute inset-0 flex flex-col w-full h-full"
+                            >
+                              <h4 className="font-black text-xl mb-8 text-slate-800 shrink-0">{selectedCity.name} 历年生产总值 (亿元)</h4>
+                              <div className="flex-grow min-h-0 w-full h-full">
+                                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                                  <AreaChart data={selectedCity.history} margin={{ bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Area type="monotone" dataKey="gdp" stroke="#3b82f6" fill="url(#colorGdp)" strokeWidth={3} animationDuration={1000} />
+                                    <defs><linearGradient id="colorGdp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </motion.div>
+                          ) : (
+                            <motion.div 
+                              key={`pie-structure-fixed-${pieAnimationKey}`} 
+                              initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }} 
+                              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} 
+                              exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
+                              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                              className="absolute inset-0 flex flex-col w-full h-full"
+                            >
+                              <h4 className="font-black text-xl mb-4 text-center text-slate-800 shrink-0">全省经济空间版图</h4>
+                              <div className="relative flex-grow flex items-center justify-center min-h-0 w-full h-full">
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                  <div className="relative flex flex-col items-center justify-center w-40 h-40">
+                                    <AnimatePresence mode="popLayout">
+                                      {activePieIndex !== -1 ? (
+                                        <motion.div 
+                                          key={`val-v2-opt-fixed-${activePieIndex}`} 
+                                          className="flex flex-col items-center" 
+                                          initial={{ opacity: 0, scale: 0.9, y: 5 }} 
+                                          animate={{ opacity: 1, scale: 1, y: 0 }} 
+                                          exit={{ opacity: 0, scale: 0.9, y: -5 }} 
+                                          transition={{ duration: 0.3, ease: "easeOut" }}
+                                        >
+                                          <span className="text-4xl font-black text-blue-600 drop-shadow-md leading-tight">{cityDistributionData[activePieIndex]?.value.toFixed(0)}</span>
+                                          <span className="text-[12px] text-slate-400 font-bold tracking-[0.3em] uppercase mt-1">亿元</span>
+                                        </motion.div>
+                                      ) : (
+                                        <motion.div 
+                                          key="placeholder-v2-opt-fixed" 
+                                          initial={{ opacity: 0 }} 
+                                          animate={{ opacity: 1 }} 
+                                          className="flex items-center justify-center"
+                                        >
+                                          <span className="text-[12px] text-blue-500/60 font-black tracking-[0.4em] uppercase animate-pulse">点击选择城市</span>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                </div>
+                                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                                  <PieChart>
+                                    <Pie 
+                                      activeIndex={activePieIndex} 
+                                      activeShape={renderActiveShape} 
+                                      data={cityDistributionData} 
+                                      innerRadius={80} 
+                                      outerRadius={125} 
+                                      dataKey="value" 
+                                      paddingAngle={5} 
+                                      cx="50%" 
+                                      cy="50%" 
+                                      onClick={onPieClick} 
+                                      stroke="none" 
+                                      style={{ outline: 'none' }}
+                                      animationDuration={1200}
+                                      animationBegin={200}
+                                      animationEasing="ease-in-out"
+                                    >
+                                      {cityDistributionData.map((_, index) => (
+                                        <Cell 
+                                          key={index} 
+                                          fill={COLORS[index % COLORS.length]} 
+                                          style={{ 
+                                            cursor: 'pointer', 
+                                            outline: 'none', 
+                                            filter: activePieIndex === index ? 'drop-shadow(0px 15px 25px rgba(0,0,0,0.1))' : 'none', 
+                                            transition: 'filter 0.5s ease' 
+                                          }} 
+                                        />
+                                      ))}
+                                    </Pie>
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </div>
+                              <div className="text-center mt-4 opacity-30 text-[10px] font-black tracking-[0.4em] uppercase shrink-0">鼠标点击扇区查看详情</div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
+                  </div>
+                </LayoutGroup>
               </motion.div>
             )}
           </AnimatePresence>
