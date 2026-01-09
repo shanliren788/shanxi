@@ -37,7 +37,7 @@ const itemVariants = {
 // 渲染饼图活跃扇区的自定义函数
 const renderActiveShape = (props: any) => {
   const RADIAN = Math.PI / 180;
-  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent } = props;
   const sin = Math.sin(-RADIAN * midAngle);
   const cos = Math.cos(-RADIAN * midAngle);
   const sx = cx + (outerRadius + 10) * cos;
@@ -88,10 +88,9 @@ const App: React.FC = () => {
   const [selectedCity, setSelectedCity] = useState<CityData>(SHANXI_CITIES[0]);
   const [activeTab, setActiveTab] = useState<'trend' | 'structure'>('trend');
   const [pieAnimationKey, setPieAnimationKey] = useState(0);
-  const [activePieIndex, setActivePieIndex] = useState(-1); // 默认为 -1，表示初始未点击
+  const [activePieIndex, setActivePieIndex] = useState(-1);
   const [selectedCulture, setSelectedCulture] = useState<{icon: string, title: string, detail: string} | null>(null);
   
-  // 全屏滚动相关状态
   const [activeIndex, setActiveIndex] = useState(0);
   const isScrolling = useRef(false);
   const sectionsCount = 6;
@@ -105,7 +104,6 @@ const App: React.FC = () => {
     { name: '关于', id: 'footer', index: 5 },
   ];
 
-  // 模拟载入进度
   useEffect(() => {
     const timer = setInterval(() => {
       setLoadingProgress(prev => {
@@ -140,40 +138,27 @@ const App: React.FC = () => {
     e.preventDefault();
 
     if (e.deltaY > 0) {
-      if (activeIndex < sectionsCount - 1) {
-        scrollToIndex(activeIndex + 1);
-      }
+      if (activeIndex < sectionsCount - 1) scrollToIndex(activeIndex + 1);
     } else if (e.deltaY < 0) {
-      if (activeIndex > 0) {
-        scrollToIndex(activeIndex - 1);
-      }
+      if (activeIndex > 0) scrollToIndex(activeIndex - 1);
     }
   }, [activeIndex, isLoading, scrollToIndex]);
 
   useEffect(() => {
     window.addEventListener('wheel', handleWheel, { passive: false });
-    
     let touchStartY = 0;
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY;
-    };
+    const handleTouchStart = (e: TouchEvent) => { touchStartY = e.touches[0].clientY; };
     const handleTouchMove = (e: TouchEvent) => {
       if (isScrolling.current || isLoading) return;
       const touchEndY = e.touches[0].clientY;
       const deltaY = touchStartY - touchEndY;
-      
       if (Math.abs(deltaY) > 50) {
-        if (deltaY > 0 && activeIndex < sectionsCount - 1) {
-          scrollToIndex(activeIndex + 1);
-        } else if (deltaY < 0 && activeIndex > 0) {
-          scrollToIndex(activeIndex - 1);
-        }
+        if (deltaY > 0 && activeIndex < sectionsCount - 1) scrollToIndex(activeIndex + 1);
+        else if (deltaY < 0 && activeIndex > 0) scrollToIndex(activeIndex - 1);
       }
     };
-
     window.addEventListener('touchstart', handleTouchStart);
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    
     return () => {
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('touchstart', handleTouchStart);
@@ -189,9 +174,7 @@ const App: React.FC = () => {
     }));
   }, []);
 
-  const onPieClick = (_: any, index: number) => {
-    setActivePieIndex(index);
-  };
+  const onPieClick = (_: any, index: number) => { setActivePieIndex(index); };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -230,11 +213,7 @@ const App: React.FC = () => {
             </div>
             <h2 className="text-2xl font-black text-white tracking-[0.3em] mb-6">三秦数据资产同步中</h2>
             <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${loadingProgress}%` }}
-                className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]"
-              />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" />
             </div>
           </motion.div>
         )}
@@ -243,18 +222,12 @@ const App: React.FC = () => {
       {/* 侧边导航指示器 */}
       <div className="fixed right-10 top-1/2 -translate-y-1/2 z-[110] flex flex-col gap-5">
         {navLinks.map((link) => (
-          <button
-            key={link.id}
-            onClick={() => scrollToIndex(link.index)}
-            className="group flex items-center justify-end gap-3"
-          >
+          <button key={link.id} onClick={() => scrollToIndex(link.index)} className="group flex items-center justify-end gap-3">
             <span className={`text-[10px] font-bold uppercase tracking-widest transition-all duration-300 opacity-0 group-hover:opacity-100 ${activeIndex === link.index ? 'text-blue-500' : 'text-slate-400'}`}>
               {link.name}
             </span>
             <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 border-2 ${
-              activeIndex === link.index 
-                ? 'bg-blue-500 border-blue-500 scale-150 shadow-[0_0_12px_rgba(59,130,246,0.6)]' 
-                : 'bg-transparent border-slate-500 group-hover:border-blue-400'
+              activeIndex === link.index ? 'bg-blue-500 border-blue-500 scale-150 shadow-[0_0_12px_rgba(59,130,246,0.6)]' : 'bg-transparent border-slate-500'
             }`} />
           </button>
         ))}
@@ -269,23 +242,14 @@ const App: React.FC = () => {
         }`}
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div 
-            className={`text-2xl font-black tracking-tighter cursor-pointer transition-colors ${activeIndex > 0 ? 'text-blue-600' : 'text-white'}`}
-            onClick={() => scrollToIndex(0)}
-          >
+          <div className={`text-2xl font-black tracking-tighter cursor-pointer transition-colors ${activeIndex > 0 ? 'text-blue-600' : 'text-white'}`} onClick={() => scrollToIndex(0)}>
             SHAANXI <span className={activeIndex > 0 ? 'text-slate-900' : 'text-blue-400'}>ECONOMY</span>
           </div>
           <div className="hidden md:flex items-center gap-12">
             {navLinks.map((link) => (
-              <button
-                key={link.id}
-                onClick={() => scrollToIndex(link.index)}
-                className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all ${
-                  activeIndex === link.index 
-                    ? (activeIndex > 0 ? 'text-blue-600 scale-110' : 'text-white scale-110')
-                    : (activeIndex > 0 ? 'text-slate-400 hover:text-blue-600' : 'text-white/50 hover:text-white')
-                }`}
-              >
+              <button key={link.id} onClick={() => scrollToIndex(link.index)} className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all ${
+                activeIndex === link.index ? (activeIndex > 0 ? 'text-blue-600 scale-110' : 'text-white scale-110') : (activeIndex > 0 ? 'text-slate-400 hover:text-blue-600' : 'text-white/50 hover:text-white')
+              }`}>
                 {link.name}
               </button>
             ))}
@@ -298,49 +262,16 @@ const App: React.FC = () => {
         
         {/* 首页 (0) */}
         <section id="home" className="h-screen w-full flex flex-col items-center justify-center relative bg-slate-900">
-          <motion.div 
-            key={`bg-${activeIndex === 0}`}
-            initial={{ scale: 1.1, opacity: 0.5 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 2 }}
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ 
-              backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.5)), url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070')`,
-            }}
-          />
+          <motion.div initial={{ scale: 1.1, opacity: 0.5 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 2 }} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.5)), url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070')` }} />
           <AnimatePresence mode="wait">
             {activeIndex === 0 && (
-              <motion.div
-                key="home-content"
-                initial="hidden" animate="visible" exit="hidden"
-                variants={sectionVariants}
-                className="relative z-10 text-center text-white px-6 flex flex-col items-center"
-              >
+              <motion.div key="home-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="relative z-10 text-center text-white px-6 flex flex-col items-center">
                 <motion.h1 variants={itemVariants} className="text-7xl md:text-9xl font-black mb-8 tracking-tighter">三秦之脊</motion.h1>
-                <motion.p variants={itemVariants} className="text-xl md:text-2xl max-w-3xl font-light tracking-[0.2em] opacity-80 mx-auto border-t border-white/20 pt-8 mb-12">
-                  陕西省 GDP 十年演进全景数据可视化
-                </motion.p>
-                
-                <motion.div
-                  variants={itemVariants}
-                  className="mt-4"
-                >
-                  <motion.div
-                    animate={{ y: [0, 16] }}
-                    transition={{ 
-                      duration: 1.8, 
-                      repeat: Infinity, 
-                      repeatType: "mirror",
-                      ease: [0.45, 0.05, 0.55, 0.95]
-                    }}
-                    style={{ willChange: 'transform' }}
-                    className="cursor-pointer group flex flex-col items-center"
-                    onClick={() => scrollToIndex(1)}
-                  >
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-100 mb-4 transition-opacity duration-500">下滑探索</span>
-                    <svg className="w-10 h-10 text-white transition-all duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                <motion.p variants={itemVariants} className="text-xl md:text-2xl max-w-3xl font-light tracking-[0.2em] opacity-80 mx-auto border-t border-white/20 pt-8 mb-12">陕西省 GDP 十年演进全景数据可视化</motion.p>
+                <motion.div variants={itemVariants} className="mt-4">
+                  <motion.div animate={{ y: [0, 16] }} transition={{ duration: 1.8, repeat: Infinity, repeatType: "mirror" }} className="cursor-pointer group flex flex-col items-center" onClick={() => scrollToIndex(1)}>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] mb-4">下滑探索</span>
+                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M19 9l-7 7-7-7" /></svg>
                   </motion.div>
                 </motion.div>
               </motion.div>
@@ -352,12 +283,7 @@ const App: React.FC = () => {
         <section id="data" className="h-screen w-full flex flex-col justify-center bg-[#f8fafc]">
           <AnimatePresence mode="wait">
             {activeIndex === 1 && (
-              <motion.div 
-                key="data-content"
-                initial="hidden" animate="visible" exit="hidden"
-                variants={sectionVariants}
-                className="max-w-7xl mx-auto px-8 w-full"
-              >
+              <motion.div key="data-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-7xl mx-auto px-8 w-full">
                 <motion.div variants={itemVariants} className="mb-10 text-center">
                   <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">GDP 核心指标看板</h2>
                   <div className="inline-flex p-1 bg-slate-200/50 rounded-xl relative z-20">
@@ -367,23 +293,11 @@ const App: React.FC = () => {
                 </motion.div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                  {/* 城市列表：增强转场效果 */}
                   <AnimatePresence mode="popLayout">
                     {activeTab === 'trend' && (
-                      <motion.div 
-                        key="city-list"
-                        initial={{ opacity: 0, x: -40, filter: 'blur(10px)', width: 0 }}
-                        animate={{ opacity: 1, x: 0, filter: 'blur(0px)', width: 'auto' }}
-                        exit={{ opacity: 0, x: -40, filter: 'blur(10px)', width: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className="lg:col-span-1 space-y-2 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar overflow-hidden"
-                      >
+                      <motion.div key="city-list" initial={{ opacity: 0, x: -40, width: 0 }} animate={{ opacity: 1, x: 0, width: 'auto' }} exit={{ opacity: 0, x: -40, width: 0 }} className="lg:col-span-1 space-y-2 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                         {SHANXI_CITIES.map((city) => (
-                          <button
-                            key={city.name}
-                            onClick={(e) => {e.stopPropagation(); setSelectedCity(city)}}
-                            className={`w-full text-left p-4 rounded-xl transition-all border-2 ${selectedCity.name === city.name ? 'border-blue-500 bg-blue-500 text-white shadow-lg' : 'border-transparent bg-white hover:bg-slate-50'}`}
-                          >
+                          <button key={city.name} onClick={(e) => {e.stopPropagation(); setSelectedCity(city)}} className={`w-full text-left p-4 rounded-xl transition-all border-2 ${selectedCity.name === city.name ? 'border-blue-500 bg-blue-500 text-white shadow-lg' : 'border-transparent bg-white hover:bg-slate-50'}`}>
                             <span className="font-bold text-sm">{city.name}</span>
                           </button>
                         ))}
@@ -391,19 +305,19 @@ const App: React.FC = () => {
                     )}
                   </AnimatePresence>
 
-                  {/* 图表展示区：增强扩展动画逻辑 */}
                   <motion.div 
-                    layout
-                    transition={{ type: "spring", stiffness: 260, damping: 28 }}
+                    layout 
+                    transition={{ type: "spring", stiffness: 200, damping: 25, mass: 0.8 }} 
                     className={`bg-white rounded-[2rem] p-10 shadow-xl min-h-[480px] flex flex-col relative overflow-hidden ${activeTab === 'trend' ? 'lg:col-span-3' : 'lg:col-span-4'}`}
                   >
                     <AnimatePresence mode="wait">
                       {activeTab === 'trend' ? (
                         <motion.div 
                           key={selectedCity.name} 
-                          initial={{ opacity: 0, x: 20 }} 
-                          animate={{ opacity: 1, x: 0 }} 
-                          exit={{ opacity: 0, x: -20 }} 
+                          initial={{ opacity: 0, x: 15, filter: 'blur(4px)' }} 
+                          animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} 
+                          exit={{ opacity: 0, x: -15, filter: 'blur(4px)' }} 
+                          transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
                           className="h-full w-full flex flex-col"
                         >
                           <h4 className="font-black text-xl mb-8 text-slate-800">{selectedCity.name} 历年生产总值 (亿元)</h4>
@@ -415,109 +329,88 @@ const App: React.FC = () => {
                                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                                 <Tooltip content={<CustomTooltip />} />
                                 <Area type="monotone" dataKey="gdp" stroke="#3b82f6" fill="url(#colorGdp)" strokeWidth={3} animationDuration={1000} />
-                                <defs>
-                                  <linearGradient id="colorGdp" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                  </linearGradient>
-                                </defs>
+                                <defs><linearGradient id="colorGdp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
                               </AreaChart>
                             </ResponsiveContainer>
                           </div>
                         </motion.div>
                       ) : (
                         <motion.div 
-                          key={`pie-distribution-container-${pieAnimationKey}`} 
-                          initial={{ opacity: 0, scale: 0.9, y: 10 }} 
-                          animate={{ opacity: 1, scale: 1, y: 0 }} 
-                          exit={{ opacity: 0, scale: 0.9, y: -10 }} 
-                          transition={{ duration: 0.5, ease: "circOut" }}
-                          style={{ willChange: 'transform' }}
+                          key={`pie-dist-optimized-${pieAnimationKey}`} 
+                          initial={{ opacity: 0, y: 20, scale: 0.98, filter: 'blur(8px)' }} 
+                          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }} 
+                          exit={{ opacity: 0, y: -20, scale: 0.98, filter: 'blur(8px)' }}
+                          transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
                           className="h-full w-full flex flex-col relative"
                         >
-                          <motion.div
-                            animate={{ y: [0, -8, 0] }}
-                            transition={{
-                              duration: 5,
-                              repeat: Infinity,
-                              ease: [0.445, 0.05, 0.55, 0.95],
-                            }}
-                            style={{ willChange: 'transform' }}
-                            className="flex-grow flex flex-col"
-                          >
+                          <div className="flex-grow flex flex-col">
                             <h4 className="font-black text-xl mb-4 text-center text-slate-800">全省经济空间版图</h4>
-                            
                             <div className="relative flex-grow flex items-center justify-center">
-                              {/* 饼图中心的动态文字层 - 修复布局抖动 Bug */}
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                                 <div className="relative flex flex-col items-center justify-center w-40 h-40">
                                   <AnimatePresence mode="popLayout">
                                     {activePieIndex !== -1 ? (
                                       <motion.div 
-                                        key={`value-${activePieIndex}`} 
-                                        className="flex flex-col items-center justify-center"
-                                        initial={{ opacity: 0, scale: 0.8, y: 5 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.8, y: -5 }}
-                                        transition={{ duration: 0.2, type: "spring", stiffness: 450, damping: 25 }}
+                                        key={`val-${activePieIndex}`} 
+                                        className="flex flex-col items-center" 
+                                        initial={{ opacity: 0, scale: 0.8, y: 8 }} 
+                                        animate={{ opacity: 1, scale: 1, y: 0 }} 
+                                        exit={{ opacity: 0, scale: 0.8, y: -8 }} 
+                                        transition={{ duration: 0.25, ease: "easeOut" }}
                                       >
-                                        <span className="text-4xl font-black text-blue-600 drop-shadow-md leading-tight">
-                                          {cityDistributionData[activePieIndex]?.value.toFixed(0)}
-                                        </span>
+                                        <span className="text-4xl font-black text-blue-600 drop-shadow-md leading-tight">{cityDistributionData[activePieIndex]?.value.toFixed(0)}</span>
                                         <span className="text-[12px] text-slate-400 font-bold tracking-[0.3em] uppercase mt-1">亿元</span>
                                       </motion.div>
                                     ) : (
                                       <motion.div 
-                                        key="placeholder"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="flex items-center justify-center text-center px-4"
+                                        key="placeholder" 
+                                        initial={{ opacity: 0 }} 
+                                        animate={{ opacity: 1 }} 
+                                        className="flex items-center justify-center"
                                       >
-                                        <span className="text-[12px] text-blue-500/60 font-black tracking-[0.4em] uppercase animate-pulse leading-relaxed">点击选择城市</span>
+                                        <span className="text-[12px] text-blue-500/60 font-black tracking-[0.4em] uppercase animate-pulse">点击选择城市</span>
                                       </motion.div>
                                     )}
                                   </AnimatePresence>
                                 </div>
                               </div>
-
                               <ResponsiveContainer width="100%" height={380}>
                                 <PieChart>
                                   <Pie 
-                                    key={`pie-enhanced-animation-${pieAnimationKey}`} 
-                                    activeIndex={activePieIndex}
-                                    activeShape={renderActiveShape}
+                                    activeIndex={activePieIndex} 
+                                    activeShape={renderActiveShape} 
                                     data={cityDistributionData} 
                                     innerRadius={80} 
                                     outerRadius={125} 
                                     dataKey="value" 
                                     paddingAngle={5} 
-                                    animationDuration={1500}
-                                    animationBegin={300}
-                                    cx="50%"
-                                    cy="50%"
-                                    onClick={onPieClick}
-                                    stroke="none"
+                                    cx="50%" 
+                                    cy="50%" 
+                                    onClick={onPieClick} 
+                                    stroke="none" 
                                     style={{ outline: 'none' }}
+                                    animationDuration={1200}
+                                    animationBegin={200}
+                                    animationEasing="cubic-bezier(0.33, 1, 0.68, 1)"
                                   >
                                     {cityDistributionData.map((_, index) => (
                                       <Cell 
                                         key={index} 
                                         fill={COLORS[index % COLORS.length]} 
                                         style={{ 
-                                          cursor: 'pointer',
-                                          outline: 'none',
-                                          filter: activePieIndex === index ? 'drop-shadow(0px 15px 25px rgba(0,0,0,0.2))' : 'none',
-                                          transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 
-                                        }}
+                                          cursor: 'pointer', 
+                                          outline: 'none', 
+                                          filter: activePieIndex === index ? 'drop-shadow(0px 15px 25px rgba(0,0,0,0.15))' : 'none', 
+                                          transition: 'filter 0.5s ease, opacity 0.3s ease' 
+                                        }} 
                                       />
                                     ))}
                                   </Pie>
                                 </PieChart>
                               </ResponsiveContainer>
                             </div>
-                            <div className="text-center mt-4 opacity-40 text-[10px] font-black tracking-[0.4em] uppercase">鼠标点击扇区查看详情</div>
-                          </motion.div>
+                            <div className="text-center mt-4 opacity-30 text-[10px] font-black tracking-[0.4em] uppercase">鼠标点击扇区查看详情</div>
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -532,24 +425,14 @@ const App: React.FC = () => {
         <section id="culture" className="h-screen w-full flex flex-col justify-center bg-white">
           <AnimatePresence mode="wait">
             {activeIndex === 2 && (
-              <motion.div 
-                key="culture-content"
-                initial="hidden" animate="visible" exit="hidden"
-                variants={sectionVariants}
-                className="max-w-7xl mx-auto px-8 text-center w-full"
-              >
+              <motion.div key="culture-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-7xl mx-auto px-8 text-center w-full">
                 <motion.h2 variants={itemVariants} className="text-4xl font-black text-slate-900 mb-16">厚植文化底蕴 · 赋能数字未来</motion.h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                   {cultureItems.map((item, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      variants={itemVariants}
-                      onClick={() => setSelectedCulture(item)}
-                      className="group cursor-pointer p-12 bg-slate-50 rounded-[2.5rem] border border-slate-100 transition-all hover:bg-blue-600 hover:text-white hover:scale-105"
-                    >
+                    <motion.div key={idx} variants={itemVariants} onClick={() => setSelectedCulture(item)} className="group cursor-pointer p-12 bg-slate-50 rounded-[2.5rem] border border-slate-100 transition-all hover:bg-blue-600 hover:text-white hover:scale-105">
                       <div className="text-6xl mb-8">{item.icon}</div>
                       <h3 className="text-xl font-black mb-4">{item.title}</h3>
-                      <div className="w-8 h-1 bg-blue-500 group-hover:bg-white mx-auto rounded-full"></div>
+                      <div className="w-8 h-1 bg-blue-500 group-hover:bg-white mx-auto rounded-full" />
                     </motion.div>
                   ))}
                 </div>
@@ -562,12 +445,7 @@ const App: React.FC = () => {
         <section id="advantages" className="h-screen w-full flex flex-col justify-center bg-slate-900 text-white">
           <AnimatePresence mode="wait">
             {activeIndex === 3 && (
-              <motion.div 
-                key="advantages-content"
-                initial="hidden" animate="visible" exit="hidden"
-                variants={sectionVariants}
-                className="max-w-7xl mx-auto px-8 w-full"
-              >
+              <motion.div key="advantages-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-7xl mx-auto px-8 w-full">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                   <div>
                     <motion.h2 variants={itemVariants} className="text-5xl font-black mb-12 tracking-tighter">腾飞的 <span className="text-blue-500 italic">核心密码</span></motion.h2>
@@ -588,9 +466,7 @@ const App: React.FC = () => {
                       </motion.div>
                     </div>
                   </div>
-                  <motion.div variants={itemVariants} className="rounded-[3rem] overflow-hidden shadow-2xl aspect-square max-h-[500px] border-8 border-white/5">
-                    <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200" className="w-full h-full object-cover" alt="Advantage" />
-                  </motion.div>
+                  <motion.div variants={itemVariants} className="rounded-[3rem] overflow-hidden shadow-2xl aspect-square max-h-[500px] border-8 border-white/5"><img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200" className="w-full h-full object-cover" alt="Advantage" /></motion.div>
                 </div>
               </motion.div>
             )}
@@ -601,24 +477,15 @@ const App: React.FC = () => {
         <section id="vision" className="h-screen w-full flex flex-col justify-center bg-white">
           <AnimatePresence mode="wait">
             {activeIndex === 4 && (
-              <motion.div 
-                key="vision-content"
-                initial="hidden" animate="visible" exit="hidden"
-                variants={sectionVariants}
-                className="max-w-5xl mx-auto px-8 text-center w-full"
-              >
+              <motion.div key="vision-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-5xl mx-auto px-8 text-center w-full">
                 <motion.h2 variants={itemVariants} className="text-5xl md:text-6xl font-black mb-16 tracking-tighter text-slate-900">时代合奏 · 续写辉煌</motion.h2>
                 <div className="flex flex-col md:flex-row gap-10 items-stretch mb-20">
-                  <motion.div variants={itemVariants} className="flex-1 p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-left relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/30 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div className="mb-4 px-4 py-1 bg-blue-600 text-white text-[10px] font-black inline-block rounded-full">2025 · 总结</div>
-                    <p className="text-slate-600 leading-relaxed font-medium relative z-10">2025年，陕西在多重挑战下展现出强大的经济韧性，秦创原驱动引擎火力全开，高质量发展迈出坚实步伐。</p>
-                  </motion.div>
-                  <motion.div variants={itemVariants} className="flex-1 p-10 bg-blue-600 rounded-[3rem] text-left text-white relative shadow-2xl shadow-blue-200 overflow-hidden group">
-                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full -ml-16 -mb-16 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div className="mb-4 px-4 py-1 bg-slate-900 text-white text-[10px] font-black inline-block rounded-full">2026 · 展望</div>
-                    <p className="text-blue-50 leading-relaxed font-medium relative z-10">迈入2026年，三秦大地将蓄势聚能，深化产业升级与区域协同，开启从经济大省向经济强省跨越的新篇章。</p>
-                  </motion.div>
+                  <div className="flex-1 p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-left relative overflow-hidden group">
+                    <p className="text-slate-600 leading-relaxed font-medium">2025年，陕西在多重挑战下展现出强大的经济韧性，秦创原驱动引擎火力全开，高质量发展迈出坚实步伐。</p>
+                  </div>
+                  <div className="flex-1 p-10 bg-blue-600 rounded-[3rem] text-left text-white relative shadow-2xl">
+                    <p className="text-blue-50 leading-relaxed font-medium">迈入2026年，三秦大地将蓄势聚能，深化产业升级与区域协同，开启从经济大省向经济强省跨越的新篇章。</p>
+                  </div>
                 </div>
                 <motion.p variants={itemVariants} className="text-2xl font-black text-blue-600 italic tracking-[0.3em] opacity-80">“ 往昔已展千重锦，明朝更进百尺竿 ”</motion.p>
               </motion.div>
@@ -630,31 +497,17 @@ const App: React.FC = () => {
         <footer id="footer" className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 border-t relative overflow-hidden">
           <AnimatePresence mode="wait">
             {activeIndex === 5 && (
-              <motion.div 
-                key="footer-content"
-                initial="hidden" animate="visible" exit="hidden"
-                variants={sectionVariants}
-                className="max-w-7xl mx-auto px-8 text-center text-slate-400 relative z-10"
-              >
+              <motion.div key="footer-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-7xl mx-auto px-8 text-center text-slate-400">
                 <motion.div variants={itemVariants} className="text-5xl font-black text-slate-900 mb-10 tracking-tighter">陕西经济数字化看板</motion.div>
-                <motion.div variants={itemVariants} className="w-24 h-1.5 bg-blue-600 mx-auto mb-12 rounded-full"></motion.div>
-                <motion.p variants={itemVariants} className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed mb-16 italic">
-                  聚焦三秦大地，用数据感知脉动，以科技预见未来。
-                </motion.p>
-                <motion.div variants={itemVariants} className="flex justify-center gap-8 mb-20">
-                  {['关中平原城市群', '陕北能源基地', '陕南循环经济'].map(tag => (
-                    <span key={tag} className="px-6 py-2.5 bg-white rounded-xl shadow-sm text-xs font-black border border-slate-100 text-slate-600 uppercase tracking-widest">{tag}</span>
-                  ))}
-                </motion.div>
+                <motion.div variants={itemVariants} className="w-24 h-1.5 bg-blue-600 mx-auto mb-12 rounded-full" />
+                <motion.p variants={itemVariants} className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed mb-16 italic">聚焦三秦大地，用数据感知脉动，以科技预见未来。</motion.p>
                 <motion.p variants={itemVariants} className="text-[10px] font-mono tracking-[0.5em] uppercase opacity-50">© 2024 Shaanxi Data Intelligence. All Rights Reserved.</motion.p>
               </motion.div>
             )}
           </AnimatePresence>
         </footer>
-
       </div>
 
-      {/* 弹窗 */}
       <AnimatePresence>
         {selectedCulture && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
@@ -663,7 +516,7 @@ const App: React.FC = () => {
               <div className="text-7xl mb-8">{selectedCulture.icon}</div>
               <h4 className="text-2xl font-black text-slate-900 mb-6">{selectedCulture.title}</h4>
               <p className="text-slate-600 leading-relaxed italic mb-10 text-base">{selectedCulture.detail}</p>
-              <button onClick={() => setSelectedCulture(null)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 active:scale-95 transition-transform">返回看板</button>
+              <button onClick={() => setSelectedCulture(null)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200">返回看板</button>
             </motion.div>
           </div>
         )}
