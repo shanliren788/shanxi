@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup, useSpring, useTransform, animate } from 'framer-motion';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Sector
@@ -9,6 +9,20 @@ import { CityData } from './types';
 
 // UI 颜色常量
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+
+// 数值滚动组件
+const CountUp: React.FC<{ value: number }> = ({ value }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration: 1.5,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (latest) => setDisplayValue(latest)
+    });
+    return () => controls.stop();
+  }, [value]);
+  return <>{displayValue.toFixed(0)}</>;
+};
 
 // 板块动画配置
 const sectionVariants = {
@@ -70,12 +84,12 @@ const renderActiveShape = (props: any) => {
         fill={fill}
         style={{ outline: 'none' }}
       />
-      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
-      <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
-      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#334155" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={2} />
+      <circle cx={ex} cy={ey} r={3} fill={fill} stroke="none" />
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#334155" style={{ fontSize: '15px', fontWeight: '900' }}>
         {payload.name}
       </text>
-      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#94a3b8" style={{ fontSize: '12px' }}>
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={20} textAnchor={textAnchor} fill="#94a3b8" style={{ fontSize: '12px', fontWeight: '700' }}>
         {(percent * 100).toFixed(2)}%
       </text>
     </g>
@@ -96,8 +110,7 @@ const App: React.FC = () => {
   const isScrolling = useRef(false);
   const sectionsCount = 6;
 
-  // 动画“后台预热”逻辑：
-  // 在加载条达到100%后，自动切换 activeTab 多次，让浏览器计算 Recharts 和 Layout 的几何属性
+  // 预热逻辑
   useEffect(() => {
     const timer = setInterval(() => {
       setLoadingProgress(prev => {
@@ -116,29 +129,21 @@ const App: React.FC = () => {
     if (loadingProgress === 100) {
       const runWarmup = async () => {
         setLoadingStatus('优化渲染引擎布局...');
-        
-        // 第一次循环：切换至结构分布并返回
         await new Promise(r => setTimeout(r, 400));
         setActiveTab('structure');
         setLoadingStatus('预加载空间版图缓存 (1/2)...');
-        
         await new Promise(r => setTimeout(r, 600));
         setActiveTab('trend');
         setLoadingStatus('校准趋势曲线模型...');
-        
-        // 第二次循环：重复执行以确保稳定渲染
         await new Promise(r => setTimeout(r, 400));
         setActiveTab('structure');
         setLoadingStatus('预加载空间版图缓存 (2/2)...');
-        
         await new Promise(r => setTimeout(r, 600));
         setActiveTab('trend');
         setLoadingStatus('全场景优化完成');
-        
         await new Promise(r => setTimeout(r, 500));
         setIsLoading(false);
       };
-      
       runWarmup();
     }
   }, [loadingProgress]);
@@ -155,13 +160,11 @@ const App: React.FC = () => {
   const scrollToIndex = useCallback((index: number) => {
     if (isScrolling.current) return;
     isScrolling.current = true;
-    
     setActiveIndex(index);
     const element = document.getElementById(navLinks[index].id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
-
     setTimeout(() => {
       isScrolling.current = false;
     }, 1200);
@@ -170,7 +173,6 @@ const App: React.FC = () => {
   const handleWheel = useCallback((e: WheelEvent) => {
     if (isScrolling.current || isLoading) return;
     e.preventDefault();
-
     if (e.deltaY > 0) {
       if (activeIndex < sectionsCount - 1) scrollToIndex(activeIndex + 1);
     } else if (e.deltaY < 0) {
@@ -200,12 +202,15 @@ const App: React.FC = () => {
     };
   }, [handleWheel, activeIndex, isLoading, scrollToIndex]);
 
+  // 数据按GDP权重排序
   const cityDistributionData = useMemo(() => {
-    return SHANXI_CITIES.map(city => ({
-      name: city.name,
-      value: city.gdp2023,
-      region: city.region
-    }));
+    return SHANXI_CITIES
+      .map(city => ({
+        name: city.name,
+        value: city.gdp2023,
+        region: city.region
+      }))
+      .sort((a, b) => b.value - a.value);
   }, []);
 
   const onPieClick = (_: any, index: number) => { setActivePieIndex(index); };
@@ -231,7 +236,6 @@ const App: React.FC = () => {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-slate-900 selection:bg-blue-500 selection:text-white">
-      {/* 载入动画层 */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
@@ -254,7 +258,6 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 侧边导航指示器 */}
       <div className="fixed right-10 top-1/2 -translate-y-1/2 z-[110] flex flex-col gap-5">
         {navLinks.map((link) => (
           <button key={link.id} onClick={() => scrollToIndex(link.index)} className="group flex items-center justify-end gap-3">
@@ -268,7 +271,6 @@ const App: React.FC = () => {
         ))}
       </div>
 
-      {/* 顶部状态栏 */}
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -292,11 +294,7 @@ const App: React.FC = () => {
         </div>
       </motion.nav>
 
-      {/* 容器滚动区域 */}
-      {/* 即使在加载时也渲染主内容，但通过 opacity 控制，以支持后台预热 */}
       <div className={`h-full w-full transition-opacity duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
-        
-        {/* 首页 (0) */}
         <section id="home" className="h-screen w-full flex flex-col items-center justify-center relative bg-slate-900">
           <motion.div initial={{ scale: 1.1, opacity: 0.5 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 2 }} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.5)), url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070')` }} />
           <AnimatePresence mode="wait">
@@ -315,10 +313,8 @@ const App: React.FC = () => {
           </AnimatePresence>
         </section>
 
-        {/* 数据看板 (1) */}
         <section id="data" className="h-screen w-full flex flex-col justify-center bg-[#f8fafc]">
           <AnimatePresence mode="wait">
-            {/* 后台预热期间 activeIndex 始终渲染 */}
             {(activeIndex === 1 || isLoading) && (
               <motion.div key="data-content" initial="hidden" animate="visible" exit="hidden" variants={sectionVariants} className="max-w-7xl mx-auto px-8 w-full">
                 <motion.div variants={itemVariants} className="mb-10 text-center">
@@ -352,11 +348,12 @@ const App: React.FC = () => {
 
                     <motion.div 
                       layout 
-                      transition={{ type: "tween", ease: [0.4, 0, 0.2, 1], duration: 0.7 }} 
+                      transition={{ type: "spring", stiffness: 100, damping: 20 }} 
                       className={`bg-white rounded-[2rem] p-10 shadow-xl h-[540px] flex flex-col relative overflow-hidden transition-[grid-column] duration-700 ${activeTab === 'trend' ? 'lg:col-span-3' : 'lg:col-span-4'}`}
                     >
                       <div className="flex-1 relative w-full h-full">
-                        <AnimatePresence mode="popLayout" initial={false}>
+                        {/* 修改点：移除 initial={false}，确保首次挂载趋势图板块时动画能正常执行 */}
+                        <AnimatePresence mode="popLayout">
                           {activeTab === 'trend' ? (
                             <motion.div 
                               key="trend-content-fixed" 
@@ -367,55 +364,82 @@ const App: React.FC = () => {
                               className="absolute inset-0 flex flex-col w-full h-full"
                             >
                               <h4 className="font-black text-xl mb-8 text-slate-800 shrink-0">{selectedCity.name} 历年生产总值 (亿元)</h4>
-                              <div className="flex-grow min-h-0 w-full h-full">
+                              {/* 核心改动：为折线图容器添加从左到右缓慢加载的 clipPath 动画，时长 1.5s */}
+                              <motion.div 
+                                key={`trend-chart-anim-${selectedCity.name}`}
+                                initial={{ clipPath: 'inset(0 100% 0 0)' }}
+                                animate={{ clipPath: 'inset(0 0 0 0)' }}
+                                transition={{ duration: 1.5, ease: "easeInOut" }}
+                                className="flex-grow min-h-0 w-full h-full"
+                              >
                                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
                                   <AreaChart data={selectedCity.history} margin={{ bottom: 20 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                     <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                                     <Tooltip content={<CustomTooltip />} />
-                                    <Area type="monotone" dataKey="gdp" stroke="#3b82f6" fill="url(#colorGdp)" strokeWidth={3} animationDuration={1000} />
+                                    {/* 同步 animationDuration 为 1.5s 以获得更平滑的整体感知 */}
+                                    <Area type="monotone" dataKey="gdp" stroke="#3b82f6" fill="url(#colorGdp)" strokeWidth={3} animationDuration={1500} />
                                     <defs><linearGradient id="colorGdp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
                                   </AreaChart>
                                 </ResponsiveContainer>
-                              </div>
+                              </motion.div>
                             </motion.div>
                           ) : (
                             <motion.div 
                               key={`pie-structure-fixed-${pieAnimationKey}`} 
-                              initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }} 
-                              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} 
-                              exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
-                              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                              className="absolute inset-0 flex flex-col w-full h-full"
+                              initial={{ opacity: 0, scale: 0.7, rotate: -270, filter: 'blur(15px)' }} 
+                              animate={{ opacity: 1, scale: 1, rotate: 0, filter: 'blur(0px)' }} 
+                              exit={{ opacity: 0, scale: 1.1, rotate: 90, filter: 'blur(10px)' }}
+                              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                              className="absolute inset-0 flex flex-col w-full h-full items-center justify-center"
                             >
-                              <h4 className="font-black text-xl mb-4 text-center text-slate-800 shrink-0">全省经济空间版图</h4>
+                              {/* 背景动态光晕 (Aura Effect) */}
+                              <motion.div 
+                                animate={{ 
+                                  scale: [1, 1.05, 1],
+                                  opacity: [0.1, 0.15, 0.1],
+                                  backgroundColor: COLORS[activePieIndex % COLORS.length]
+                                }}
+                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                className="absolute w-[400px] h-[400px] rounded-full filter blur-[80px] z-0 pointer-events-none"
+                              />
+
+                              <motion.h4 
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 }}
+                                className="font-black text-xl mb-4 text-center text-slate-800 shrink-0 relative z-10"
+                              >
+                                全省经济空间版图 (按GDP权重排序)
+                              </motion.h4>
+                              
                               <div className="relative flex-grow flex items-center justify-center min-h-0 w-full h-full">
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                                   <div className="relative flex flex-col items-center justify-center w-40 h-40">
                                     <AnimatePresence mode="popLayout">
                                       {activePieIndex !== -1 ? (
                                         <motion.div 
-                                          key={`val-v2-opt-fixed-${activePieIndex}`} 
+                                          key={`val-v4-${activePieIndex}`} 
                                           className="flex flex-col items-center" 
-                                          initial={{ opacity: 0, scale: 0.9, y: 5 }} 
+                                          initial={{ opacity: 0, scale: 0.5, y: 20 }} 
                                           animate={{ opacity: 1, scale: 1, y: 0 }} 
-                                          exit={{ opacity: 0, scale: 0.9, y: -5 }} 
-                                          transition={{ duration: 0.3, ease: "easeOut" }}
+                                          exit={{ opacity: 0, scale: 0.5, y: -20 }} 
+                                          transition={{ type: "spring", stiffness: 200, damping: 15 }}
                                         >
-                                          <span className="text-4xl font-black text-blue-600 drop-shadow-md leading-tight">{cityDistributionData[activePieIndex]?.value.toFixed(0)}</span>
-                                          <span className="text-[12px] text-slate-400 font-bold tracking-[0.3em] uppercase mt-1">亿元</span>
+                                          <span className="text-5xl font-black text-blue-600 drop-shadow-xl leading-tight">
+                                            <CountUp value={cityDistributionData[activePieIndex]?.value} />
+                                          </span>
+                                          <motion.span 
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ delay: 0.3 }}
+                                            className="text-[12px] text-slate-400 font-bold tracking-[0.3em] uppercase mt-1"
+                                          >
+                                            亿元
+                                          </motion.span>
                                         </motion.div>
-                                      ) : (
-                                        <motion.div 
-                                          key="placeholder-v2-opt-fixed" 
-                                          initial={{ opacity: 0 }} 
-                                          animate={{ opacity: 1 }} 
-                                          className="flex items-center justify-center"
-                                        >
-                                          <span className="text-[12px] text-blue-500/60 font-black tracking-[0.4em] uppercase animate-pulse">点击选择城市</span>
-                                        </motion.div>
-                                      )}
+                                      ) : null}
                                     </AnimatePresence>
                                   </div>
                                 </div>
@@ -425,17 +449,17 @@ const App: React.FC = () => {
                                       activeIndex={activePieIndex} 
                                       activeShape={renderActiveShape} 
                                       data={cityDistributionData} 
-                                      innerRadius={80} 
-                                      outerRadius={125} 
+                                      innerRadius={85} 
+                                      outerRadius={135} 
                                       dataKey="value" 
-                                      paddingAngle={5} 
+                                      paddingAngle={4} 
                                       cx="50%" 
                                       cy="50%" 
                                       onClick={onPieClick} 
                                       stroke="none" 
                                       style={{ outline: 'none' }}
-                                      animationDuration={1200}
-                                      animationBegin={200}
+                                      animationDuration={1500}
+                                      animationBegin={100}
                                       animationEasing="ease-in-out"
                                     >
                                       {cityDistributionData.map((_, index) => (
@@ -445,8 +469,10 @@ const App: React.FC = () => {
                                           style={{ 
                                             cursor: 'pointer', 
                                             outline: 'none', 
-                                            filter: activePieIndex === index ? 'drop-shadow(0px 15px 25px rgba(0,0,0,0.1))' : 'none', 
-                                            transition: 'filter 0.5s ease' 
+                                            filter: activePieIndex === index 
+                                              ? `drop-shadow(0px 0px 15px ${COLORS[index % COLORS.length]}55)` 
+                                              : 'none', 
+                                            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' 
                                           }} 
                                         />
                                       ))}
@@ -454,7 +480,15 @@ const App: React.FC = () => {
                                   </PieChart>
                                 </ResponsiveContainer>
                               </div>
-                              <div className="text-center mt-4 opacity-30 text-[10px] font-black tracking-[0.4em] uppercase shrink-0">鼠标点击扇区查看详情</div>
+                              
+                              <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 1.2 }}
+                                className="text-center mt-4 opacity-40 text-[10px] font-black tracking-[0.4em] uppercase shrink-0 relative z-10"
+                              >
+                                交互式数据矩阵 · 实时权重预览
+                              </motion.div>
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -467,7 +501,6 @@ const App: React.FC = () => {
           </AnimatePresence>
         </section>
 
-        {/* 文化板块 (2) */}
         <section id="culture" className="h-screen w-full flex flex-col justify-center bg-white">
           <AnimatePresence mode="wait">
             {activeIndex === 2 && (
@@ -487,7 +520,6 @@ const App: React.FC = () => {
           </AnimatePresence>
         </section>
 
-        {/* 战略优势 (3) */}
         <section id="advantages" className="h-screen w-full flex flex-col justify-center bg-slate-900 text-white">
           <AnimatePresence mode="wait">
             {activeIndex === 3 && (
@@ -519,7 +551,6 @@ const App: React.FC = () => {
           </AnimatePresence>
         </section>
 
-        {/* 愿景展望 (4) */}
         <section id="vision" className="h-screen w-full flex flex-col justify-center bg-white">
           <AnimatePresence mode="wait">
             {activeIndex === 4 && (
@@ -539,7 +570,6 @@ const App: React.FC = () => {
           </AnimatePresence>
         </section>
 
-        {/* 页脚 (5) */}
         <footer id="footer" className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 border-t relative overflow-hidden">
           <AnimatePresence mode="wait">
             {activeIndex === 5 && (
